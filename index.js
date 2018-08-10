@@ -44,7 +44,7 @@ app.post('/webhook', function(req, res) {
 });
 
 function calculate (expression) {
-  let result
+  let result;
   if (expression.indexOf('+') + 1) {
     let numb = expression.split('+');
     result = +numb[0] + +numb[1];
