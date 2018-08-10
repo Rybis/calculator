@@ -1,68 +1,73 @@
 'use strict';
-//thanks @voronianski and https://github.com/voronianski/simon-le-bottle
-
-
-// Getting started with Facebook Messaging Platform
-// https://developers.facebook.com/docs/messenger-platform/quickstart
 
 var express = require('express');
 var request = require('superagent');
 var bodyParser = require('body-parser');
 
-var pageToken = 'EAAdeUR4JB0cBANKjyTCdfPU9W36sXvqOyxfpRDD18JtWqMsEVNgZA0PfB7QlW5Xm5IWOLNjwsCa8o2UXDlHC8bGu5s8lCRQoADDYga7FHO4cp9ezrpTH52YcZCzQAtaT7Yj0xQkmP8fAaa1CMf74XMqon1LSb1wszmJgcg1FauzvE1bj6sJTgsMhYkvSgZD';
-var verifyToken = 'CALC++';
+var PAGE_ACCESS_TOKEN = 'EAAdeUR4JB0cBANKjyTCdfPU9W36sXvqOyxfpRDD18JtWqMsEVNgZA0PfB7QlW5Xm5IWOLNjwsCa8o2UXDlHC8bGu5s8lCRQoADDYga7FHO4cp9ezrpTH52YcZCzQAtaT7Yj0xQkmP8fAaa1CMf74XMqon1LSb1wszmJgcg1FauzvE1bj6sJTgsMhYkvSgZD';
+const VERIFY_TOKEN = 'CALC++';
 
 var app = express();
+var port = process.env.PORT || 5000;
 
-
-app.set('port', (process.env.PORT || 5000));
-
-//app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.json());
 
-
-// views is directory for all template files
-app.set('views', __dirname + '/views');
-
-app.listen(app.get('port'), function() {
-  console.log('Node app is running on port', app.get('port'));
+app.listen(port, function() {
+  console.log('Сервер запущен на порту: ', port);
 });
 
+app.get('/webhook', (req, res) => {
+  let mode = req.query['hub.mode'];
+  let token = req.query['hub.verify_token'];
+  let challenge = req.query['hub.challenge'];
 
-app.get('/webhook', function(req, res) {
-    if (req.query['hub.verify_token'] === verifyToken) {
-        return res.send(req.query['hub.challenge']);
+  if (mode && token) {
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+      console.log('Webhook верифицирован');
+      res.status(200).send(challenge);
+    } else {
+      res.sendStatus(403);
     }
-    res.send('Error, wrong validation token');
+  }
 });
 
 app.post('/webhook', function(req, res) {
     var messagingEvents = req.body.entry[0].messaging;
-
     messagingEvents.forEach(function(event) {
         var sender = event.sender.id;
-
-        if (event.postback) {
-            var text = JSON.stringify(event.postback).substring(0, 200);
-            sendTextMessage(sender, 'Postback received: ' + text);
-        } else if (event.message && event.message.text) {
+        if (event.message && event.message.text) {
             var text = event.message.text.trim().substring(0, 200);
-
-            if (text.toLowerCase() === 'generic') {
-                sendGenericMessage(sender);
-            } else {
-                sendTextMessage(sender, 'Text received, echo: ' + text);
-            }
+            sendTextMessage(sender, 'Результат: ' + calculate(text));
         }
     });
-
     res.sendStatus(200);
 });
+
+function calculate (expression) {
+  let result
+  if (expression.indexOf('+') + 1) {
+    let numb = expression.split('+');
+    result = +numb[0] + +numb[1];
+  }
+  if (expression.indexOf('-') + 1) {
+    let numb = expression.split('-');
+    result = +numb[0] - +numb[1];
+  }
+  if (expression.indexOf('*') + 1) {
+    let numb = expression.split('*');
+    result = +numb[0] * +numb[1];
+  }
+  if (expression.indexOf('/') + 1) {
+    let numb = expression.split('/');
+    result = +numb[0] / +numb[1];
+  }
+  return result;
+}
 
 function sendMessage (sender, message) {
     request
         .post('https://graph.facebook.com/v2.6/me/messages')
-        .query({access_token: pageToken})
+        .query({access_token: PAGE_ACCESS_TOKEN})
         .send({
             recipient: {
                 id: sender
@@ -71,9 +76,9 @@ function sendMessage (sender, message) {
         })
         .end(function (err, res) {
             if (err) {
-                console.log('Error sending message: ', err);
+                console.log('Ошибка отправки сообщения: ', err);
             } else if (res.body.error) {
-                console.log('Error: ', res.body.error);
+                console.log('Ошибка: ', res.body.error);
             }
         });
 }
@@ -81,39 +86,5 @@ function sendMessage (sender, message) {
 function sendTextMessage (sender, text) {
     sendMessage(sender, {
         text: text
-    });
-}
-
-function sendGenericMessage (sender) {
-    sendMessage(sender, {
-        attachment: {
-            type: 'template',
-            payload: {
-                template_type: 'generic',
-                elements: [{
-                    title: 'First card',
-                    subtitle: 'Element #1 of an hscroll',
-                    image_url: 'http://messengerdemo.parseapp.com/img/rift.png',
-                    buttons: [{
-                        type: 'web_url',
-                        url: 'https://www.messenger.com/',
-                        title: 'Web url'
-                    }, {
-                        type: 'postback',
-                        title: 'Postback',
-                        payload: 'Payload for first element in a generic bubble'
-                    }]
-                }, {
-                    title: 'Second card',
-                    subtitle: 'Element #2 of an hscroll',
-                    image_url: 'http://messengerdemo.parseapp.com/img/gearvr.png',
-                    buttons: [{
-                        type: 'postback',
-                        title: 'Postback',
-                        payload: 'Payload for second element in a generic bubble'
-                    }]
-                }]
-            }
-        }
     });
 }
