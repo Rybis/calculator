@@ -3,6 +3,7 @@
 var express = require('express');
 var request = require('superagent');
 var bodyParser = require('body-parser');
+var fs = require("fs");
 
 var PAGE_ACCESS_TOKEN = 'EAAdeUR4JB0cBANKjyTCdfPU9W36sXvqOyxfpRDD18JtWqMsEVNgZA0PfB7QlW5Xm5IWOLNjwsCa8o2UXDlHC8bGu5s8lCRQoADDYga7FHO4cp9ezrpTH52YcZCzQAtaT7Yj0xQkmP8fAaa1CMf74XMqon1LSb1wszmJgcg1FauzvE1bj6sJTgsMhYkvSgZD';
 const VERIFY_TOKEN = 'CALC++';
@@ -41,6 +42,10 @@ app.post('/webhook', function(req, res) {
         }
     });
     res.sendStatus(200);
+});
+
+app.get('/privacy', (req, res) => {
+  res.sendFile('docx/privacy.html', {root: __dirname });
 });
 
 function calculate (expression) {
